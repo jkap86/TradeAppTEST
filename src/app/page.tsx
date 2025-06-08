@@ -1,103 +1,386 @@
-import Image from "next/image";
+"use client";
+
+import Allplayers from "@/lib/allplayers.json";
+import { League, LeagueDetail, User, Roster } from "@/lib/types";
+import axios from "axios";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+const allplayers: { [key: string]: { [key: string]: string } } =
+  Object.fromEntries(
+    Allplayers.data.map((player_obj: { [key: string]: string }) => [
+      player_obj.player_id,
+      player_obj,
+    ])
+  );
 
 export default function Home() {
+  const [username, setUsername] = useState("");
+  const [userLeagues, setUserLeagues] = useState<User>({
+    user_id: "",
+    username: "",
+    avatar: "",
+    leagues: [],
+  });
+  const [selectedLeagueId, setSelectedLeagueId] = useState("");
+  const [leagueDetail, setLeagueDetail] = useState<LeagueDetail>({
+    league_id: "",
+    avatar: "",
+    name: "",
+    rosters: [],
+  });
+  const [selectedLeaguemate, setSelectedLeaguemate] = useState<{
+    user_id: string;
+    username: string;
+    avatar: string;
+    roster_id: number;
+  }>({
+    user_id: "",
+    username: "",
+    avatar: "",
+    roster_id: 0,
+  });
+  const [selectedPlayers, setSelectedPlayers] = useState<
+    { player_id: string; manager: "u" | "l" }[]
+  >([]);
+  const [identifier, setIdentifier] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const userRoster = leagueDetail.rosters.find(
+    (roster) => roster.user_id === userLeagues.user_id
+  );
+
+  const lmRoster = leagueDetail.rosters.find(
+    (roster) => roster.roster_id === selectedLeaguemate.roster_id
+  );
+
+  const fetchUserLeagues = async () => {
+    const response = await axios.get("/api/user", {
+      params: {
+        username,
+      },
+    });
+
+    setUserLeagues(response.data);
+  };
+
+  const fetchLeagueDetail = async () => {
+    const response = await axios.get("/api/league", {
+      params: {
+        league_id: selectedLeagueId,
+      },
+    });
+
+    setLeagueDetail(response.data);
+  };
+
+  const modifySelectedPlayers = (player_id: string, checked: boolean) => {
+    if (checked) {
+      if (selectedPlayers.length < 15) {
+        setSelectedPlayers((prevState) => [
+          ...prevState,
+          {
+            player_id,
+            manager: userRoster?.players.includes(player_id) ? "u" : "l",
+          },
+        ]);
+      }
+    } else {
+      setSelectedPlayers((prevState) =>
+        prevState.filter((x) => x.player_id !== player_id)
+      );
+    }
+  };
+
+  const submitPlayers = async () => {
+    const response = await axios.post("/api/submitplayers", {
+      selectedPlayers,
+      user_id: userLeagues.user_id,
+      username: userLeagues.username,
+      league_id: leagueDetail.league_id,
+      league_name: leagueDetail.name,
+      lm_user_id: selectedLeaguemate.user_id,
+      lm_username: selectedLeaguemate.username,
+    });
+
+    setIdentifier(response.data);
+    // router.push(`/rank/${response.data}/u`);
+  };
+
+  useEffect(() => {
+    setSelectedPlayers([]);
+  }, [selectedLeaguemate]);
+
+  const selectLeaguemate = (roster_id: number) => {
+    const lmRoster = leagueDetail.rosters.find(
+      (r) => r.roster_id === roster_id
+    );
+
+    if (lmRoster) {
+      setSelectedLeaguemate({
+        user_id: lmRoster.user_id,
+        username: lmRoster.username,
+        avatar: lmRoster.avatar,
+        roster_id: roster_id,
+      });
+    }
+  };
+
+  const getPositionValue = (player_id: string) => {
+    const position = allplayers && allplayers[player_id]?.position;
+
+    switch (position) {
+      case "QB":
+        return 1;
+      case "RB":
+        return 2;
+      case "FB":
+        return 2;
+      case "WR":
+        return 3;
+      case "TE":
+        return 4;
+      default:
+        return 5;
+    }
+  };
+
+  const getRosterTable = (roster: Roster | undefined) => {
+    return (
+      <table className="w-1/2 table-fixed align-top">
+        <tbody>
+          {(roster?.players || [])
+            .sort((a, b) => getPositionValue(a) - getPositionValue(b))
+            .map((player_id) => {
+              return (
+                <tr
+                  key={player_id}
+                  className={
+                    selectedPlayers.some((sp) => sp.player_id === player_id)
+                      ? `outline outline-green-500`
+                      : ""
+                  }
+                  onClick={() =>
+                    modifySelectedPlayers(
+                      player_id,
+                      !selectedPlayers.some((sp) => sp.player_id === player_id)
+                    )
+                  }
+                >
+                  <td>{allplayers[player_id]?.position || "-"}</td>
+                  <td>{allplayers[player_id]?.full_name || player_id}</td>
+                  <td>{allplayers[player_id]?.team || "FA"}</td>
+                </tr>
+              );
+            })}
+          {(roster?.draftpicks || [])
+            .sort(
+              (a, b) =>
+                a.season - b.season ||
+                a.round - b.round ||
+                (a.order || 0) - (b.order || 0)
+            )
+            .map((pick) => {
+              const pick_name = pick.order
+                ? `${pick.season} ${pick.round}.${pick.order.toLocaleString(
+                    "en-US",
+                    {
+                      minimumIntegerDigits: 2,
+                    }
+                  )}`
+                : `${pick.season} Round ${pick.round} ${`(${
+                    pick.original_user.username +
+                    (pick.original_user.username === "Orphan"
+                      ? `_${pick.roster_id}`
+                      : "")
+                  })`}`;
+              return (
+                <tr
+                  key={`${pick.season}_${pick.round}_${pick.roster_id}`}
+                  className={
+                    selectedPlayers.some((sp) => sp.player_id === pick_name)
+                      ? `outline outline-green-500`
+                      : ""
+                  }
+                  onClick={() =>
+                    modifySelectedPlayers(
+                      pick_name,
+                      !selectedPlayers.some((sp) => sp.player_id === pick_name)
+                    )
+                  }
+                >
+                  <td colSpan={3}>
+                    {pick_name.replace(`(${roster?.username})`, "")}
+                  </td>
+                </tr>
+              );
+            })}
+        </tbody>
+      </table>
+    );
+  };
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+      <h1>Trade App</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      <div className="flex flex-col h-full justify-evenly">
+        <div className="flex flex-col m-8 items-center">
+          <label>Enter Your Sleeper Username</label>
+          <input
+            className="w-[15rem] text-center"
+            type="text"
+            placeholder="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <button
+            className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
+            onClick={() => fetchUserLeagues()}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            Fetch Leagues
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {userLeagues.user_id && (
+          <div className="flex flex-col m-8 items-center text-center">
+            <label>Select League to find trades in</label>
+            <select
+              onChange={(e) => setSelectedLeagueId(e.target.value)}
+              className="w-[15rem] text-center"
+            >
+              <option value="" hidden>
+                Select League
+              </option>
+              {userLeagues.leagues.map((league: League) => {
+                return (
+                  <option key={league.league_id} value={league.league_id}>
+                    {league.name}
+                  </option>
+                );
+              })}
+            </select>
+            <button
+              className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
+              disabled={selectedLeagueId === ""}
+              onClick={fetchLeagueDetail}
+            >
+              Fetch Rosters
+            </button>
+          </div>
+        )}
+
+        {leagueDetail.league_id && (
+          <div className="flex flex-col m-8 items-center text-center">
+            <label>Select a Leaguemate to trade with</label>
+            <select
+              className="w-[15rem] text-center"
+              value={selectedLeaguemate.roster_id}
+              onChange={(e) => selectLeaguemate(parseInt(e.target.value))}
+            >
+              <option value="" hidden>
+                Select Leaguemate
+              </option>
+              {leagueDetail.rosters
+                .filter((roster) => roster.user_id !== userLeagues.user_id)
+                .map((roster) => {
+                  return (
+                    <option key={roster.roster_id} value={roster.roster_id}>
+                      {roster.username}
+                    </option>
+                  );
+                })}
+            </select>
+          </div>
+        )}
+
+        {selectedLeaguemate.roster_id > 0 && (
+          <div className="flex flex-col items-center text-center">
+            <label>
+              Select 5-15 players total from both teams that you are interested
+              in including in a trade.
+            </label>
+            <br />
+            <br />
+            <em>{selectedPlayers.length} selected</em>
+            <br /> <br />
+            <div className="flex flex-col items-center">
+              <div className="flex">
+                {getRosterTable(userRoster)}
+                {getRosterTable(lmRoster)}
+              </div>
+              <button
+                className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
+                onClick={() => {
+                  if (
+                    selectedPlayers.length >= 5 &&
+                    selectedPlayers.length <= 15
+                  ) {
+                    submitPlayers();
+                  } else {
+                    alert(
+                      `Select ${5 - selectedPlayers.length}-${
+                        15 - selectedPlayers.length
+                      } more players`
+                    );
+                  }
+                }}
+              >
+                Submit Players
+              </button>
+            </div>
+          </div>
+        )}
+
+        {identifier && (
+          <div className="flex flex-col items-center">
+            <div className="flex flex-col m-8">
+              <label>
+                Send Leaguemate this link for them to rank these players
+              </label>
+              <div className="flex">
+                <input
+                  type="text"
+                  value={`${
+                    typeof window !== "undefined" ? window.location.origin : ""
+                  }/rank/${identifier}/l`}
+                  readOnly
+                  className="border px-2 py-1 w-full"
+                />
+                <button
+                  className="bg-blue-600 text-white px-3 py-1 rounded"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        `${
+                          typeof window !== "undefined"
+                            ? window.location.origin
+                            : ""
+                        }/rank/${identifier}/l`
+                      );
+
+                      setCopied(true);
+
+                      setTimeout(() => setCopied(false), 2000);
+                    } catch {
+                      console.error("Failed to copy");
+                    }
+                  }}
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+            <Link
+              href={`${
+                typeof window !== "undefined" ? window.location.origin : ""
+              }/rank/${identifier}/u`}
+            >
+              Link for you to rank these players
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

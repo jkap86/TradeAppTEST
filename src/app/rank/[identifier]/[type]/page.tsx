@@ -74,7 +74,7 @@ export default function Rank({
 
     setIsLoading(false);
 
-    router.push(`tune/${identifier}/${type}`);
+    router.push(`/tune/${identifier}/${type}`);
   };
 
   return (

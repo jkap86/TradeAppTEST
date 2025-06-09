@@ -25,7 +25,7 @@ const SIZE_PAIRS: [number, number][] = [
 const buildFairTrades = (
   players: { player_id: string; score: number }[],
   fairTradesAnswered: Trade[],
-  diff = 5
+  diff = 25
 ) => {
   const player_ids = players.map((p) => p.player_id);
   const score = Object.fromEntries(players.map((p) => [p.player_id, p.score]));
@@ -40,7 +40,7 @@ const buildFairTrades = (
       // Pick B‑side combos from remaining pool
       for (const sideB of combos(remaining, sizeB)) {
         const gap = Math.abs(scoreA - sum(sideB, score));
-        if (gap > diff)
+        if (gap < diff)
           trades.push({
             sideA,
             sideB,
@@ -72,7 +72,7 @@ const buildFairTrades = (
             t.sideB.join("") === fta.sideB.join("")
         )
     )
-    .sort((a, b) => a.diff - b.diff || Math.random() - Math.random());
+    .sort((a, b) => Math.random() - Math.random());
 
   const variedTrades: Trade[] = [];
 

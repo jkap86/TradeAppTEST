@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     const {
       scores,
       verdicts,
-      eta = 0.1,
-      epochs = 5,
+      eta = 0.5,
+      epochs = 2,
     } = (await req.json()) as {
       scores: PlayerScore[];
       verdicts: TradeVerdict[];

@@ -23,7 +23,13 @@ export default function Tune({
   const { identifier, type } = use(params);
   const [league_name, setLeague_name] = useState("");
   const [scores, setScores] = useState<
-    { rank: number; player_id: string; score: number; manager: "u" | "l" }[]
+    {
+      rank: number;
+      player_id: string;
+      score: number;
+      manager: "u" | "l";
+      change: number;
+    }[]
   >([]);
   const [fairTrades, setFairTrades] = useState<Trade[]>([]);
   const [fairTradesAnswered, setFairTradesAnswered] = useState<Trade[]>([]);
@@ -73,7 +79,26 @@ export default function Tune({
     setFairTradesAnswered(verdicts);
     setFairTrades([]);
 
-    setScores(response.data.scores);
+    const previousScores = [...scores];
+
+    setScores(
+      response.data.scores.map(
+        (s: {
+          rank: number;
+          player_id: string;
+          score: number;
+          manager: "u" | "l";
+        }) => {
+          const previous = previousScores.find(
+            (ps) => s.player_id === ps.player_id
+          );
+          return {
+            ...s,
+            change: previous && s.score - previous.score,
+          };
+        }
+      )
+    );
   };
 
   const finalizeScores = async () => {
@@ -124,6 +149,22 @@ export default function Tune({
                   </td>
                   <td>
                     <strong className="m-2">{player.score}</strong>
+                  </td>
+                  <td>
+                    <em
+                      className={
+                        "m-2 " +
+                        `text-${
+                          player.change > 0
+                            ? "green"
+                            : player.change < 0
+                            ? "red"
+                            : "white"
+                        }-500`
+                      }
+                    >
+                      {player.change?.toString()}
+                    </em>
                   </td>
                 </tr>
               );

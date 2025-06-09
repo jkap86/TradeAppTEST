@@ -2,6 +2,7 @@
 
 import Allplayers from "@/lib/allplayers.json";
 import { League, LeagueDetail, User, Roster } from "@/lib/types";
+import { getPickName } from "@/utils/getPickName";
 import axios from "axios";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -81,7 +82,14 @@ export default function Home() {
           ...prevState,
           {
             player_id,
-            manager: userRoster?.players.includes(player_id) ? "u" : "l",
+            manager: [
+              ...(userRoster?.players || []),
+              ...(userRoster?.draftpicks || []).map((pick) =>
+                getPickName(pick)
+              ),
+            ].includes(player_id)
+              ? "u"
+              : "l",
           },
         ]);
       }
@@ -181,19 +189,7 @@ export default function Home() {
                 (a.order || 0) - (b.order || 0)
             )
             .map((pick) => {
-              const pick_name = pick.order
-                ? `${pick.season} ${pick.round}.${pick.order.toLocaleString(
-                    "en-US",
-                    {
-                      minimumIntegerDigits: 2,
-                    }
-                  )}`
-                : `${pick.season} Round ${pick.round} ${`(${
-                    pick.original_user.username +
-                    (pick.original_user.username === "Orphan"
-                      ? `_${pick.roster_id}`
-                      : "")
-                  })`}`;
+              const pick_name = getPickName(pick);
               return (
                 <tr
                   key={`${pick.season}_${pick.round}_${pick.roster_id}`}

@@ -8,9 +8,9 @@ export interface Trade {
 }
 
 export async function POST(req: NextRequest) {
-  const { scores } = await req.json();
+  const { scores, fairTradesAnswered } = await req.json();
 
-  const trades = buildFairTrades(scores);
+  const trades = buildFairTrades(scores, fairTradesAnswered);
 
   return NextResponse.json(trades);
 }
@@ -24,6 +24,7 @@ const SIZE_PAIRS: [number, number][] = [
 
 const buildFairTrades = (
   players: { player_id: string; score: number }[],
+  fairTradesAnswered: Trade[],
   diff = 5
 ) => {
   const player_ids = players.map((p) => p.player_id);
@@ -62,9 +63,57 @@ const buildFairTrades = (
     }
   }
 
-  return unique
-    .sort((a, b) => a.diff - b.diff || Math.random() - Math.random())
-    .slice(0, 5);
+  const sorted = unique
+    .filter(
+      (t) =>
+        !fairTradesAnswered.some(
+          (fta: Trade) =>
+            t.sideA.join("") === fta.sideA.join("") &&
+            t.sideB.join("") === fta.sideB.join("")
+        )
+    )
+    .sort((a, b) => a.diff - b.diff || Math.random() - Math.random());
+
+  const variedTrades: Trade[] = [];
+
+  for (const player_id of player_ids) {
+    if (
+      variedTrades.some(
+        (vt) => vt.sideA.includes(player_id) || vt.sideB.includes(player_id)
+      )
+    )
+      continue;
+
+    const playerTrade = sorted.find(
+      (t) => t.sideA.includes(player_id) || t.sideB.includes(player_id)
+    );
+
+    if (playerTrade) variedTrades.push(playerTrade);
+    if (variedTrades.length === 5) break;
+  }
+
+  variedTrades.push(
+    ...sorted
+      .filter(
+        (s) =>
+          !variedTrades.some(
+            (vt) =>
+              vt.sideA.join("") === s.sideA.join("") &&
+              vt.sideB.join("") === s.sideB.join("")
+          )
+      )
+      .slice(0, 5 - variedTrades.length)
+  );
+  for (const t of sorted) {
+    if (variedTrades.length === 5) break;
+
+    const overlaps = [...t.sideA, ...t.sideB].some((p) =>
+      variedTrades.some((vt) => vt.sideA.includes(p) || vt.sideB.includes(p))
+    );
+    if (!overlaps) variedTrades.push(t);
+  }
+
+  return variedTrades;
 };
 
 const sum = (ids: string[], map: Record<string, number>) =>

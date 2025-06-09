@@ -26,6 +26,7 @@ export default function Tune({
     { rank: number; player_id: string; score: number; manager: "u" | "l" }[]
   >([]);
   const [fairTrades, setFairTrades] = useState<Trade[]>([]);
+  const [fairTradesAnswered, setFairTradesAnswered] = useState<Trade[]>([]);
 
   useEffect(() => {
     const fetchScores = async () => {
@@ -52,6 +53,7 @@ export default function Tune({
       const fetchFairTrades = async () => {
         const response = await axios.post("/api/fairtrades", {
           scores,
+          fairTradesAnswered,
         });
 
         setFairTrades(response.data);
@@ -62,10 +64,14 @@ export default function Tune({
   }, [scores]);
 
   const updateScores = async () => {
+    const verdicts = fairTrades;
     const response = await axios.post("/api/updatescores", {
       scores,
-      verdicts: fairTrades,
+      verdicts,
     });
+
+    setFairTradesAnswered(verdicts);
+    setFairTrades([]);
 
     setScores(response.data.scores);
   };

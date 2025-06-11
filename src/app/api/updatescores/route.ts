@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     const {
       scores,
       verdicts,
-      eta = 0.5,
-      epochs = 2,
+      eta = 0.1,
+      epochs = 3,
     } = (await req.json()) as {
       scores: PlayerScore[];
       verdicts: TradeVerdict[];
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const targets: number[] = [];
     for (const v of verdicts) {
       const sign = (v.winner === "a" ? 1 : -1) * v.diff;
-      const probability = 0.5 + (signed / maxDiff) * 0.5;
+      const probability = 0.5 + (sign / maxDiff) * 0.5;
       const row = new Array(theta.length).fill(0);
       v.sideA.forEach((id) => (row[idx[id]] += v.diff));
       v.sideB.forEach((id) => (row[idx[id]] -= v.diff));

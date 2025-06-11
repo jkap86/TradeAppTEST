@@ -72,7 +72,14 @@ const buildFairTrades = (
             t.sideB.join("") === fta.sideB.join("")
         )
     )
-    .sort(() => Math.random() - Math.random());
+    .sort(
+      (a, b) =>
+        Math.min(a.sideA.length, a.sideB.length) -
+          Math.min(b.sideA.length, b.sideB.length) ||
+        Math.max(a.sideA.length, a.sideB.length) -
+          Math.max(b.sideA.length, b.sideB.length) ||
+        Math.random() - Math.random()
+    );
 
   const variedTrades: Trade[] = [];
 

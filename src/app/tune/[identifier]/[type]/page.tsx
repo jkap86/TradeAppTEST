@@ -76,7 +76,7 @@ export default function Tune({
       verdicts,
     });
 
-    setFairTradesAnswered(verdicts);
+    setFairTradesAnswered((prevState) => [...prevState, ...verdicts]);
     setFairTrades([]);
 
     const previousScores = [...scores];

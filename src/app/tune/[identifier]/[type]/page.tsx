@@ -3,7 +3,7 @@
 import axios from "axios";
 import { use, useEffect, useState } from "react";
 import Allplayers from "@/lib/allplayers.json";
-import { Trade } from "@/app/api/fairtrades/route";
+//import { Trade } from "@/app/api/fairtrades/route";
 import { useRouter } from "next/navigation";
 import { TradeVerdict } from "@/app/api/updatescores/route";
 

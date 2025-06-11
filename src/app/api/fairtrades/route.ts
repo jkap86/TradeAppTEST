@@ -72,7 +72,7 @@ const buildFairTrades = (
             t.sideB.join("") === fta.sideB.join("")
         )
     )
-    .sort((a, b) => Math.random() - Math.random());
+    .sort(() => Math.random() - Math.random());
 
   const variedTrades: Trade[] = [];
 

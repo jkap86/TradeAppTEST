@@ -11,7 +11,7 @@ export interface TradeVerdict {
   diff: number;
   sideA: string[];
   sideB: string[];
-  winner: "a" | "b" | "fair"; // UI values
+  winner: "a" | "b" | "even"; // UI values
 }
 
 export async function POST(req: NextRequest) {
@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     const {
       scores,
       verdicts,
-      eta = 0.1,
-      epochs = 3,
+      eta = 0.05,
+      epochs = 2,
     } = (await req.json()) as {
       scores: PlayerScore[];
       verdicts: TradeVerdict[];

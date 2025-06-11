@@ -5,6 +5,7 @@ import { use, useEffect, useState } from "react";
 import Allplayers from "@/lib/allplayers.json";
 import { Trade } from "@/app/api/fairtrades/route";
 import { useRouter } from "next/navigation";
+import { TradeVerdict } from "@/app/api/updatescores/route";
 
 const allplayers: { [key: string]: { [key: string]: string } } =
   Object.fromEntries(
@@ -31,8 +32,11 @@ export default function Tune({
       change: number;
     }[]
   >([]);
-  const [fairTrades, setFairTrades] = useState<Trade[]>([]);
-  const [fairTradesAnswered, setFairTradesAnswered] = useState<Trade[]>([]);
+  //const [fairTrades, setFairTrades] = useState<Trade[]>([]);
+  //const [fairTradesAnswered, setFairTradesAnswered] = useState<Trade[]>([]);
+  const [sides, setSides] = useState<
+    { side: string[]; score: number; rank: number }[]
+  >([]);
 
   useEffect(() => {
     const fetchScores = async () => {
@@ -56,6 +60,7 @@ export default function Tune({
 
   useEffect(() => {
     if (scores.length > 0) {
+      /*
       const fetchFairTrades = async () => {
         const response = await axios.post("/api/fairtrades", {
           scores,
@@ -66,18 +71,72 @@ export default function Tune({
       };
 
       fetchFairTrades();
+      */
+
+      const fetchSides = async () => {
+        const response = await axios.post("/api/tradesides", {
+          scores,
+        });
+
+        setSides(
+          response.data
+            .sort(
+              (
+                a: { side: string; score: number },
+                b: { side: string; score: number }
+              ) => b.score - a.score
+            )
+            .map((side: { side: string; score: number }, index: number) => {
+              return {
+                ...side,
+                rank: index + 1,
+              };
+            })
+        );
+      };
+
+      fetchSides();
     }
   }, [scores]);
 
   const updateScores = async () => {
-    const verdicts = fairTrades;
+    // const verdicts = fairTrades;
+
+    const verdicts: TradeVerdict[] = [];
+    const rankings = sides;
+
+    for (const sideA of rankings) {
+      for (const sideB of rankings) {
+        if (
+          verdicts.some(
+            (v) =>
+              v.sideB.join("") === sideA.side.join("") &&
+              v.sideA.join("") === sideB.side.join("")
+          )
+        )
+          continue;
+
+        verdicts.push({
+          diff: Math.abs(sideA.score - sideB.score),
+          sideA: sideA.side,
+          sideB: sideB.side,
+          winner:
+            sideA.score > sideB.score
+              ? "a"
+              : sideB.score > sideA.score
+              ? "b"
+              : "even",
+        });
+      }
+    }
+
     const response = await axios.post("/api/updatescores", {
       scores,
       verdicts,
     });
 
-    setFairTradesAnswered((prevState) => [...prevState, ...verdicts]);
-    setFairTrades([]);
+    // setFairTradesAnswered((prevState) => [...prevState, ...verdicts]);
+    //  setFairTrades([]);
 
     const previousScores = [...scores];
 
@@ -110,7 +169,7 @@ export default function Tune({
 
     router.push(`/summary/${identifier}`);
   };
-
+  /*
   const pickSide = (fairTrade: Trade, winner: "a" | "b" | "even") => {
     const existingFairTrades = fairTrades;
 
@@ -127,6 +186,30 @@ export default function Tune({
         winner,
       },
     ]);
+  };
+*/
+  const moveSide = (rank: number, direction: "up" | "down") => {
+    const current = sides;
+
+    const updated = current.map((cs) => {
+      if (direction === "up") {
+        if (cs.rank === rank) {
+          cs.rank = Math.max(cs.rank - 1, 1);
+        } else if (cs.rank === rank - 1) {
+          cs.rank = Math.min(cs.rank + 1, 5);
+        }
+      } else if (direction === "down") {
+        if (cs.rank === rank) {
+          cs.rank = Math.min(cs.rank + 1, 5);
+        } else if (cs.rank === rank + 1) {
+          cs.rank = Math.max(cs.rank - 1, 1);
+        }
+      }
+
+      return cs;
+    });
+
+    setSides(updated);
   };
 
   return (
@@ -174,7 +257,7 @@ export default function Tune({
 
       <table className="table-fixed w-full border-separate border-spacing-y-4 border-spacing-x-1">
         <tbody>
-          {fairTrades
+          {/*fairTrades
             .sort((a, b) =>
               [...a.sideA, ...a.sideB].join("") >
               [...b.sideA, ...b.sideB].join("")
@@ -233,6 +316,30 @@ export default function Tune({
                       );
                     })}
                   </td>
+                </tr>
+              );
+            })*/}
+
+          {sides
+            .sort((a, b) => a.rank - b.rank)
+            .map((side: { side: string[]; score: number; rank: number }) => {
+              return (
+                <tr
+                  key={side.side.join("")}
+                  className="outline outline-gray-500"
+                >
+                  <td>{side.rank}</td>
+                  <td colSpan={5}>
+                    {side.side.map((player_id) => {
+                      return (
+                        <p key={player_id}>
+                          {allplayers[player_id]?.full_name || player_id}
+                        </p>
+                      );
+                    })}
+                  </td>
+                  <td onClick={() => moveSide(side.rank, "up")}>+</td>
+                  <td onClick={() => moveSide(side.rank, "down")}>-</td>
                 </tr>
               );
             })}

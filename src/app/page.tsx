@@ -176,7 +176,9 @@ export default function Home() {
                   }
                 >
                   <td>{allplayers[player_id]?.position || "-"}</td>
-                  <td>{allplayers[player_id]?.full_name || player_id}</td>
+                  <td colSpan={3}>
+                    {allplayers[player_id]?.full_name || player_id}
+                  </td>
                   <td>{allplayers[player_id]?.team || "FA"}</td>
                 </tr>
               );

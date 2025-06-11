@@ -19,7 +19,7 @@ const SIZE_PAIRS: [number, number][] = [
   [2, 1], // 2‑for‑1
   [2, 2], // 2‑for‑2
   [3, 1], // 3‑for‑1
-  [3, 2], // 3‑for‑2
+  //[3, 2], // 3‑for‑2
 ];
 
 const buildFairTrades = (
@@ -72,14 +72,7 @@ const buildFairTrades = (
             t.sideB.join("") === fta.sideB.join("")
         )
     )
-    .sort(
-      (a, b) =>
-        Math.min(a.sideA.length, a.sideB.length) -
-          Math.min(b.sideA.length, b.sideB.length) ||
-        Math.max(a.sideA.length, a.sideB.length) -
-          Math.max(b.sideA.length, b.sideB.length) ||
-        Math.random() - Math.random()
-    );
+    .sort((a, b) => Math.random() - Math.random());
 
   const variedTrades: Trade[] = [];
 

@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
 
-    const maxDiff = Math.max(...verdicts.map((v) => v.diff), 1);
     const ids = scores.map((p) => p.player_id);
     const idx = Object.fromEntries(ids.map((id, i) => [id, i]));
     const theta = scores.map((p) => p.score);
@@ -42,13 +41,11 @@ export async function POST(req: NextRequest) {
     const rows: number[][] = [];
     const targets: number[] = [];
     for (const v of verdicts) {
-      const sign = (v.winner === "a" ? 1 : -1) * v.diff;
-      const probability = 0.5 + (sign / maxDiff) * 0.5;
       const row = new Array(theta.length).fill(0);
       v.sideA.forEach((id) => (row[idx[id]] += v.diff));
       v.sideB.forEach((id) => (row[idx[id]] -= v.diff));
       rows.push(row);
-      targets.push(probability);
+      targets.push(v.winner === "a" ? 1 : v.winner === "b" ? 0 : 0.5);
     }
 
     sgdUpdate(theta, rows, targets, eta, epochs);

@@ -23,9 +23,8 @@ export async function generateMetadata({
   const lm_username = type === "u" ? data.lm_username : data.username;
   const league_name = data.league_name;
 
-  return {
-    title: "Trade App",
-    description: `
+  const title = "Trade App";
+  const description = `
       ${username}, Please rank following players to generate fair trades with ${lm_username} in ${league_name}:
       \n
      ${data.players
@@ -34,7 +33,15 @@ export async function generateMetadata({
            allplayers[player.player_id]?.player_id || player.player_id
        )
        .join("\n")}
-    `,
+    `;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+    },
   };
 }
 

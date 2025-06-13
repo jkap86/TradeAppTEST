@@ -1,91 +1,55 @@
-"use client";
+import { fetchPlayers } from "@/lib/fetchPlayers";
+import Allplayers from "@/lib/allplayers.json";
+import Rank from "../../components/Rank";
 
-import axios from "axios";
-import { use, useEffect, useState } from "react";
-import RankPlayers from "@/components/RankPlayers";
-import { useRouter } from "next/navigation";
+const allplayers: { [key: string]: { [key: string]: string } } =
+  Object.fromEntries(
+    Allplayers.data.map((player_obj: { [key: string]: string }) => [
+      player_obj.player_id,
+      player_obj,
+    ])
+  );
 
-export default function Rank({
+export async function generateMetadata({
   params,
 }: {
   params: Promise<{ identifier: string; type: "u" | "l" }>;
 }) {
-  const router = useRouter();
-  const { identifier, type } = use(params);
-  const [league_name, setLeague_name] = useState("");
-  const [rankings, setRankings] = useState<
-    { rank: number; player_id: string }[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { identifier, type } = await params;
 
-  useEffect(() => {
-    const fetchPlayers = async () => {
-      const response = await axios.get("/api/fetchplayers", {
-        params: {
-          identifier,
-        },
-      });
+  const data = await fetchPlayers(identifier);
 
-      setLeague_name(response.data.league_name);
+  const username = type === "u" ? data.username : data.lm_username;
+  const lm_username = type === "u" ? data.lm_username : data.username;
+  const league_name = data.league_name;
 
-      if (type === "u") {
-        if (response.data.user_ranks.length === 0) {
-          setRankings(
-            response.data.players.map(
-              (
-                player: { player_id: string; manager: "u" | "l" },
-                index: number
-              ) => {
-                return { rank: index + 1, ...player };
-              }
-            )
-          );
-        } else {
-          setRankings(response.data.user_ranks);
-        }
-      } else if (type === "l") {
-        if (response.data.lm_ranks.length === 0) {
-          setRankings(
-            response.data.players.map(
-              (
-                player: { player_id: string; manager: "u" | "l" },
-                index: number
-              ) => {
-                return { rank: index + 1, ...player };
-              }
-            )
-          );
-        } else {
-          setRankings(response.data.lm_ranks);
-        }
-      }
-    };
+  const title = "Trade App";
+  const description = `
+      ${username}, Please rank following players to generate fair trades with ${lm_username} in ${league_name}:
+      \n
+     ${data.players
+       .map(
+         (player: { player_id: string }) =>
+           allplayers[player.player_id]?.player_id || player.player_id
+       )
+       .join("\n")}
+    `;
 
-    fetchPlayers();
-  }, [identifier, type]);
-
-  const generateScores = async () => {
-    setIsLoading(true);
-    await axios.post("/api/generatescores", {
-      identifier,
-      rankings,
-      type,
-    });
-
-    setIsLoading(false);
-
-    router.push(`/tune/${identifier}/${type}`);
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+    },
   };
+}
 
-  return (
-    <div className="h-screen w-screen flex flex-col items-center text-center">
-      <h1>{league_name}</h1>
-      <RankPlayers
-        ranks={rankings}
-        setRanks={setRankings}
-        isLoading={isLoading}
-        generateScores={generateScores}
-      />
-    </div>
-  );
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ identifier: string; type: "u" | "l" }>;
+}) {
+  const { identifier, type } = await params;
+  return <Rank identifier={identifier} type={type} />;
 }

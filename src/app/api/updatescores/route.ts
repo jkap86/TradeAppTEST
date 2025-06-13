@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     const {
       scores,
       verdicts,
-      eta = 0.05,
-      epochs = 2,
+      eta = (process.env.ETA && parseFloat(process.env.ETA)) || 0.1,
+      epochs = (process.env.EPOCHS && parseFloat(process.env.EPOCHS)) || 5,
     } = (await req.json()) as {
       scores: PlayerScore[];
       verdicts: TradeVerdict[];

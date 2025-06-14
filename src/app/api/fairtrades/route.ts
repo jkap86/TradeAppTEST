@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
 const SIZE_PAIRS: [number, number][] = [
   [2, 1], // 2‑for‑1
-  [2, 2], // 2‑for‑2
+  //[2, 2], // 2‑for‑2
   [3, 1], // 3‑for‑1
   //[3, 2], // 3‑for‑2
 ];
